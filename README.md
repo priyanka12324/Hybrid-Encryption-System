@@ -66,9 +66,9 @@ g++ -std=c++17 -Wall -Iinclude -o hes_cqct src/main.cpp src/CryptoEngine.cpp src
 
 | Member | Role | Technical Contribution | GitHub Commits |
 |---|---|---|---|
-| Srishti Tilara | Team Lead | Integration, K1/K2/K3 logic, testing | 6 |
-| Tejas Pratap Singh | Performance and Documentation | Benchmarking, report, GitHub | 4 |
-| Hrithik Mehta | Cryptography | Encryption, decryption, CSPRNG | 4 |
+| Srishti Tilara | Team Lead | Integration, K1/K2/K3 logic, testing | 2 |
+| Tejas Pratap Singh | Performance and Documentation | Benchmarking, report, GitHub | 3 |
+| Hrithik Mehta | Cryptography | Encryption, decryption, CSPRNG | 3 |
 | Priyanka Rawat | Rotation Module | Dynamic shift, queue rotation | 3 |
 
 ## License
