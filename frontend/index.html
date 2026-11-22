@@ -1,1 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HES-CQCT chat</title>
+<style>
+:root{
+  --paper:#E8ECE6; --card:#FFFFFF; --ink:#16231F; --muted:#66746D;
+  --mine:#0F5257; --mine-ink:#F2FAF8; --line:#CBD4CC; --amber:#C98A00; --danger:#B3362B; --ok:#2E9E62;
+  font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#101A18; --card:#1B2926; --ink:#E7F0EC; --muted:#8FA39A; --mine:#1F7A7F; --line:#2A3B37; --amber:#E0A100; }
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0)}
+button,input,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace}
+
+/* ---------- join ---------- */
+#join{margin:auto;width:min(460px,94vw);padding:26px;background:var(--card);border:1px solid var(--line);border-radius:22px}
+#join h1{font-size:1.45rem;margin:0 0 6px}
+#join p{margin:0 0 16px;color:var(--muted);line-height:1.45;font-size:.93rem}
+label{display:block;font-size:.82rem;color:var(--muted);margin:10px 2px 4px}
+input[type=text]{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.primary{width:100%;margin-top:16px;padding:13px;border:0;border-radius:12px;background:var(--mine);color:var(--mine-ink);font-weight:600;cursor:pointer}
+.err{color:var(--danger);font-size:.85rem;margin-top:10px;min-height:1.1em}
+
+/* ---------- app layout ---------- */
+#app{display:none;flex:1;min-height:0;width:100%;max-width:1100px;margin:0 auto}
+#chat{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--paper)}
+#side{display:none;width:360px;flex:none;overflow-y:auto;background:var(--card);border-left:1px solid var(--line);padding:16px}
+@media (min-width:900px){ #side{display:block} #sideBtn{display:none} }
+#app.showSide #side{display:block;width:100%;border-left:0}
+#app.showSide #chat{display:none}
+
+header{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--mine);color:var(--mine-ink);display:grid;place-items:center;font-weight:700;flex:none}
+.who{flex:1;min-width:0}
+.who b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who span{font-size:.82rem;color:var(--muted)}
+#dot{width:10px;height:10px;border-radius:50%;background:var(--danger);flex:none}
+#dot.on{background:var(--ok)}
+#sideBtn{border:1px solid var(--line);background:transparent;border-radius:10px;padding:7px 11px;cursor:pointer;font-size:.85rem}
+
+#log{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:3px}
+.row{display:flex;flex-direction:column;max-width:82%}
+.row.me{align-self:flex-end;align-items:flex-end}
+.row.them{align-self:flex-start;align-items:flex-start}
+.row.gap{margin-top:12px}
+.sender{font-size:.78rem;color:var(--muted);margin:0 8px 3px}
+.bubble{padding:9px 14px;border-radius:18px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.4;cursor:pointer;text-align:left}
+.me .bubble{background:var(--mine);color:var(--mine-ink);border-bottom-right-radius:5px}
+.them .bubble{background:var(--card);border:1px solid var(--line);border-bottom-left-radius:5px}
+.bubble.bad{background:transparent!important;color:var(--danger)!important;border:1px dashed var(--danger)!important}
+.meta{font-size:.7rem;color:var(--muted);margin:2px 8px 0}
+.detail{display:none;margin:6px 0 2px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:.76rem;line-height:1.55;max-width:100%;overflow-wrap:anywhere}
+.row.open .detail{display:block}
+.detail b{font-weight:600}
+.detail .hex{display:block;color:var(--muted);margin-bottom:6px}
+.note{align-self:center;font-size:.8rem;color:var(--muted);margin:10px 0;padding:4px 12px;border-radius:99px;background:color-mix(in srgb,var(--line) 55%,transparent);text-align:center}
+.empty{margin:auto;color:var(--muted);text-align:center;max-width:280px;line-height:1.5}
+
+form{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0));background:var(--card);border-top:1px solid var(--line)}
+textarea{flex:1;resize:none;max-height:120px;padding:11px 14px;border:1px solid var(--line);border-radius:20px;background:var(--paper)}
+#send{border:0;border-radius:50%;width:44px;height:44px;background:var(--mine);color:var(--mine-ink);font-size:1.1rem;cursor:pointer;flex:none}
+#send:disabled{opacity:.45;cursor:default}
+
+/* ---------- side panel ---------- */
+#side h2{font-size:1rem;margin:0 0 4px}
+#side p{margin:0 0 10px;font-size:.84rem;color:var(--muted);line-height:1.45}
+#side section{margin-bottom:22px}
+.small{padding:9px 12px;margin-top:10px;width:auto;font-size:.88rem}
+#ring{width:100%;height:auto;display:block}
+.track{fill:none;stroke:var(--line);stroke-width:2}
+.slot.full.mine{fill:var(--mine)} .slot.full.theirs{fill:var(--card);stroke:var(--ink);stroke-width:1.5}
+.slot.empty{fill:none;stroke:var(--line);stroke-dasharray:3 3;stroke-width:1.5}
+.slotTxt{font-size:9px;text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.mine+.slotTxt{fill:var(--mine-ink)} .theirs+.slotTxt{fill:var(--ink)}
+.tag{font-size:11px;fill:var(--amber);text-anchor:middle;font-weight:700}
+.center{font-size:13px;fill:var(--muted);text-anchor:middle}
+#nodeList{list-style:none;margin:8px 0 0;padding:0;font-size:.78rem}
+#nodeList li{padding:6px 0;border-top:1px solid var(--line);overflow-wrap:anywhere}
+#nodeList .tagText{color:var(--amber);font-weight:700}
+@media (prefers-reduced-motion:no-preference){ .bubble{animation:pop .12s ease-out} @keyframes pop{from{transform:scale(.96);opacity:.5}to{transform:none;opacity:1}} }
+</style>
+</head>
+<body>
+
+<section id="join">
+  <h1>HES-CQCT chat</h1>
+  <p>Messages are encrypted in your browser with the three-layer cipher before they leave this device. The server only relays ciphertext. Both devices must enter the same three keys. Use demo keys, never real passwords.</p>
+  <label for="nameInput">Your name</label>
+  <input type="text" id="nameInput" maxlength="30" autocomplete="nickname">
+  <label for="k1In">K1 (XOR mixing key)</label>
+  <input type="text" id="k1In" value="AlphaKey123" autocomplete="off" spellcheck="false">
+  <label for="k2In">K2 (shift key)</label>
+  <input type="text" id="k2In" value="BetaShift456" autocomplete="off" spellcheck="false">
+  <label for="k3In">K3 (rotation key)</label>
+  <input type="text" id="k3In" value="GammaMix789" autocomplete="off" spellcheck="false">
+  <div class="err" id="joinErr" role="alert"></div>
+  <button class="primary" id="joinBtn">Start chatting</button>
+</section>
+
+<div id="app">
+  <div id="chat">
+    <header>
+      <div class="avatar" id="avatar">…</div>
+      <div class="who"><b id="title">Connecting…</b><span id="sub"></span></div>
+      <button id="sideBtn" type="button">Queue &amp; keys</button>
+      <div id="dot" title="Connection status"></div>
+    </header>
+    <div id="log" aria-live="polite"></div>
+    <form id="form" autocomplete="off">
+      <textarea id="text" rows="1" maxlength="500" placeholder="Type a message"></textarea>
+      <button id="send" type="submit" aria-label="Send message" disabled>&#10148;</button>
+    </form>
+  </div>
+
+  <aside id="side">
+    <section>
+      <h2>Circular queue on the server</h2>
+      <p>Each node holds one ciphertext and its nonce. The rear always links back to the front. When the ring is full, the oldest node is dequeued to make room.</p>
+      <svg id="ring" viewBox="0 0 300 300" role="img" aria-label="Circular queue diagram"></svg>
+      <ul id="nodeList"></ul>
+    </section>
+    <section>
+      <h2>Keys on this device</h2>
+      <p>Change a key to see what a wrong key does: the cipher has no integrity check, so it returns garbage instead of an error.</p>
+      <label for="k1Side">K1</label><input type="text" id="k1Side" autocomplete="off" spellcheck="false">
+      <label for="k2Side">K2</label><input type="text" id="k2Side" autocomplete="off" spellcheck="false">
+      <label for="k3Side">K3</label><input type="text" id="k3Side" autocomplete="off" spellcheck="false">
+      <div class="err" id="keyErr" role="alert"></div>
+      <button class="primary small" id="applyKeys" type="button">Apply keys and re-decrypt</button>
+    </section>
+    <button class="primary small" id="backBtn" type="button" style="display:none">Back to chat</button>
+  </aside>
+</div>
+
+<script src="/cipher.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const enc = new TextEncoder();
+const dec = new TextDecoder("utf-8", { fatal: true });
+
+let me = "", cid = "", keys = null, es = null, lastId = 0, connectedOnce = false;
+let timeline = [];                // {type:"msg", ev} | {type:"note", text}
+const seen = new Set();
+let queueSnap = { capacity: 5, nodes: [] };
+let people = [];
+
+// per-tab identity so two tabs with the same name are still two devices
+(function () {
+  const b = new Uint8Array(12); crypto.getRandomValues(b);
+  cid = Array.from(b, (x) => "abcdefghijklmnopqrstuvwxyz0123456789"[x % 36]).join("");
+})();
+
+function esc(s){ return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function clock(ts){ return new Date(ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+
+/* ---------- decrypt one wire message ---------- */
+function open(ev) {
+  const d = HES.decrypt(HES.fromHex(ev.cipher), ev.nonce, keys);
+  let text = null;
+  try { text = dec.decode(d.plain); } catch (e) {}
+  return { d, text };
+}
+
+/* ---------- rendering ---------- */
+function renderAll() {
+  const log = $("log");
+  log.textContent = "";
+  let lastSender = null;
+  if (!timeline.length) {
+    const e = document.createElement("div");
+    e.className = "empty";
+    e.textContent = "No messages yet. Say hello, or open this page on your other device and enter the same keys.";
+    log.appendChild(e);
+  }
+  for (const item of timeline) {
+    if (item.type === "note") {
+      const n = document.createElement("div"); n.className = "note"; n.textContent = item.text;
+      log.appendChild(n); lastSender = null; continue;
+    }
+    const ev = item.ev, mine = ev.cid === cid;
+    const row = document.createElement("div");
+    row.className = "row " + (mine ? "me" : "them") + (lastSender === ev.cid ? "" : " gap");
+    if (!mine && lastSender !== ev.cid) {
+      const s = document.createElement("div"); s.className = "sender"; s.textContent = ev.name; row.appendChild(s);
+    }
+    const { d, text } = open(ev);
+    const b = document.createElement("div");
+    b.className = "bubble" + (text === null ? " bad" : "");
+    b.textContent = text === null ? "Unreadable. Do both devices use the same keys?" : text;
+    b.tabIndex = 0;
+    b.setAttribute("role", "button");
+    b.setAttribute("aria-label", "Show encryption details");
+    const toggle = () => row.classList.toggle("open");
+    b.onclick = toggle;
+    b.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } };
+    row.appendChild(b);
+
+    const det = document.createElement("div"); det.className = "detail mono";
+    const rline = d.r === 0 ? "r = 0, so no rotation" : `r = ${d.r} (${d.r % 2 ? "odd" : "even"}), rotated ${d.dir} on send`;
+    det.innerHTML =
+      `<b>Nonce</b> ${ev.nonce} (only nonce mod 256 = ${ev.nonce % 256} affects the cipher)<br>` +
+      `<b>K3 rotation</b> ${esc(rline)}<br>` +
+      `<b>On the wire (after K3)</b><span class="hex">${esc(HES.toHex(HES.fromHex(ev.cipher)))}</span>` +
+      `<b>After undoing K3 (K2 output)</b><span class="hex">${esc(HES.toHex(d.k2))}</span>` +
+      `<b>After undoing K2 (K1 output)</b><span class="hex">${esc(HES.toHex(d.k1))}</span>` +
+      `<b>After undoing K1 (plaintext bytes)</b><span class="hex">${esc(HES.toHex(d.plain))}</span>`;
+    row.appendChild(det);
+
+    const m = document.createElement("div"); m.className = "meta"; m.textContent = clock(ev.ts) + "  #" + ev.id;
+    row.appendChild(m);
+    log.appendChild(row); lastSender = ev.cid;
+  }
+}
+function scrollDown(){ const l = $("log"); l.scrollTop = l.scrollHeight; }
+
+function drawRing() {
+  const { capacity: cap, nodes } = queueSnap;
+  const svg = $("ring"), cx = 150, cy = 150, R = 100;
+  const pos = (i, r = R) => { const a = -Math.PI / 2 + (2 * Math.PI * i) / cap; return [cx + r * Math.cos(a), cy + r * Math.sin(a)]; };
+  let h = `<circle class="track" cx="${cx}" cy="${cy}" r="${R}"/>`;
+  for (let i = 0; i < cap; i++) {
+    const [x, y] = pos(i);
+    if (i < nodes.length) {
+      const n = nodes[i], cls = n.cid === cid ? "mine" : "theirs";
+      h += `<circle class="slot full ${cls}" cx="${x}" cy="${y}" r="14"><title>#${n.id} from ${esc(n.name)}, nonce ${n.nonce}</title></circle>` +
+           `<text class="slotTxt" x="${x}" y="${y}">${n.id}</text>`;
+    } else {
+      h += `<circle class="slot empty" cx="${x}" cy="${y}" r="8"/>`;
+    }
+  }
+  if (nodes.length) {
+    const [fx, fy] = pos(0, R + 32), [rx, ry] = pos(nodes.length - 1, R + 32);
+    if (nodes.length === 1) h += `<text class="tag" x="${fx}" y="${fy}">front = rear</text>`;
+    else h += `<text class="tag" x="${fx}" y="${fy}">front</text><text class="tag" x="${rx}" y="${ry}">rear</text>`;
+  }
+  h += `<text class="center" x="${cx}" y="${cy - 4}">${nodes.length} of ${cap} used</text>` +
+       `<text class="center" x="${cx}" y="${cy + 14}" style="font-size:10px">rear.next → front</text>`;
+  svg.innerHTML = h;
+
+  const ul = $("nodeList"); ul.textContent = "";
+  nodes.forEach((n, i) => {
+    const li = document.createElement("li"); li.className = "mono";
+    const tag = nodes.length === 1 ? "front, rear" : i === 0 ? "front" : i === nodes.length - 1 ? "rear" : "";
+    li.innerHTML = (tag ? `<span class="tagText">${tag}</span> ` : "") +
+      `#${n.id} ${esc(n.name)} · nonce ${n.nonce}<br><span style="color:var(--muted)">${esc(HES.toHex(HES.fromHex(n.cipher)).slice(0, 60))}${n.cipher.length > 40 ? " …" : ""}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+function updateHeader() {
+  const others = people.filter((p) => p.cid !== cid);
+  $("title").textContent = others.length ? [...new Set(others.map((p) => p.name))].join(", ") : "Waiting for someone…";
+  $("avatar").textContent = others.length ? others[0].name[0].toUpperCase() : "…";
+  $("sub").textContent = others.length ? "online" : "Open this page on your other device";
+}
+
+/* ---------- network ---------- */
+function connect() {
+  if (es) es.close();
+  const url = `/stream?name=${encodeURIComponent(me)}&cid=${cid}&last=${lastId}&rejoin=${connectedOnce ? 1 : 0}`;
+  es = new EventSource(url);
+  es.onopen = () => { connectedOnce = true; $("dot").classList.add("on"); };
+  es.onerror = () => {
+    $("dot").classList.remove("on"); $("sub").textContent = "Reconnecting…";
+    es.close(); setTimeout(connect, 1500);      // reconnect with an up-to-date `last`
+  };
+  es.onmessage = (e) => {
+    const ev = JSON.parse(e.data);
+    if (ev.kind === "history") {
+      ev.events.forEach(addMsg); renderAll(); scrollDown();
+    } else if (ev.kind === "msg") {
+      if (addMsg(ev)) { const l = $("log"), near = l.scrollHeight - l.scrollTop - l.clientHeight < 160; renderAll(); if (near || ev.cid === cid) scrollDown(); }
+    } else if (ev.kind === "queue") { queueSnap = ev; drawRing();
+    } else if (ev.kind === "presence") { people = ev.people; updateHeader();
+    } else if (ev.kind === "join") {
+      if (ev.cid !== cid) { timeline.push({ type: "note", text: ev.name + " joined" }); renderAll(); scrollDown(); }
+    }
+  };
+}
+function addMsg(ev) {
+  lastId = Math.max(lastId, ev.id);
+  if (seen.has(ev.id)) return false;
+  seen.add(ev.id); timeline.push({ type: "msg", ev }); return true;
+}
+
+async function sendMsg() {
+  const text = $("text").value.trim(); if (!text) return;
+  const nonce = HES.newNonce();
+  const cipher = HES.toHex(HES.encrypt(enc.encode(text), nonce, keys).out);
+  $("text").value = ""; autosize(); $("send").disabled = true;
+  try {
+    const r = await fetch("/send", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: me, cid, nonce, cipher }) });
+    if (!r.ok) throw new Error();
+  } catch (e) {
+    timeline.push({ type: "note", text: "Message not sent. Check the connection and try again." });
+    $("text").value = text; renderAll(); scrollDown();
+  }
+  $("text").focus();
+}
+
+/* ---------- wiring ---------- */
+function readKeys(a, b, c, errEl) {
+  const k = { k1: $(a).value, k2: $(b).value, k3: $(c).value };
+  const problem = HES.validateKeys(k);
+  $(errEl).textContent = problem || "";
+  return problem ? null : k;
+}
+function start() {
+  me = $("nameInput").value.trim();
+  if (!me) { $("joinErr").textContent = "Enter a name."; $("nameInput").focus(); return; }
+  const k = readKeys("k1In", "k2In", "k3In", "joinErr"); if (!k) return;
+  keys = k;
+  $("k1Side").value = k.k1; $("k2Side").value = k.k2; $("k3Side").value = k.k3;
+  $("join").style.display = "none"; $("app").style.display = "flex";
+  drawRing(); renderAll(); connect(); $("text").focus();
+}
+$("joinBtn").onclick = start;
+["nameInput", "k1In", "k2In", "k3In"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") start(); }));
+
+$("applyKeys").onclick = () => {
+  const k = readKeys("k1Side", "k2Side", "k3Side", "keyErr"); if (!k) return;
+  keys = k; renderAll(); scrollDown();
+  $("keyErr").style.color = "var(--ok)"; $("keyErr").textContent = "Keys applied. Messages were re-decrypted.";
+  setTimeout(() => { $("keyErr").textContent = ""; $("keyErr").style.color = ""; }, 2500);
+};
+$("sideBtn").onclick = () => { $("app").classList.add("showSide"); $("backBtn").style.display = "block"; };
+$("backBtn").onclick = () => { $("app").classList.remove("showSide"); $("backBtn").style.display = "none"; };
+
+$("form").addEventListener("submit", (e) => { e.preventDefault(); sendMsg(); });
+$("text").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
+function autosize(){ const t = $("text"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; }
+$("text").addEventListener("input", () => { autosize(); $("send").disabled = !$("text").value.trim(); });
+</script>
+</body>
+</html>
 
