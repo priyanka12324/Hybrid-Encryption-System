@@ -1,0 +1,3 @@
+operation,data_bytes,iterations,total_seconds,average_seconds,throughput_MiB_per_second
+encryption,1048576,10,0.046035,0.004603,217.226024
+decryption,1048576,10,0.040235,0.004024,248.539829
